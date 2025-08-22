@@ -1,36 +1,65 @@
-import telebot
-import os
-from flask import Flask
-import threading
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
+import datetime
+import random
 
-# Aapka Bot Token yahan nahi, Render ke Secrets mein daalna hai
-BOT_TOKEN = os.environ.get('BOT_TOKEN')
-bot = telebot.TeleBot(BOT_TOKEN)
+TOKEN = "PASTE_YOUR_BOT_TOKEN_HERE"
 
-# Flask App (ye hai keep_alive ka part)
-app = Flask('')
+# Random jokes & quotes
+jokes = [
+    "😂 Why did the computer go to the doctor? Because it caught a virus!",
+    "🤣 I asked my laptop for a joke… it said '404 Joke Not Found!'",
+    "😜 Why was the math book sad? Because it had too many problems."
+]
 
-@app.route('/')
-def home():
-    return "Bot is alive!"
+quotes = [
+    "🌟 Believe in yourself!",
+    "🚀 Dreams don’t work unless you do.",
+    "🔥 Stay positive, work hard, make it happen."
+]
 
-def run_flask():
-    # Port 0.0.0.0 par run karna zaroori hai
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+# Start command
+def start(update: Update, context: CallbackContext):
+    keyboard = [
+        [InlineKeyboardButton("📌 About Bot", callback_data='about')],
+        [InlineKeyboardButton("👤 My Profile", callback_data='profile')],
+        [InlineKeyboardButton("⏰ Time & Date", callback_data='time')],
+        [InlineKeyboardButton("😂 Random Joke", callback_data='joke')],
+        [InlineKeyboardButton("💡 Quote", callback_data='quote')],
+        [InlineKeyboardButton("🔄 Restart", callback_data='restart')],
+        [InlineKeyboardButton("❌ Exit", callback_data='exit')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.message.reply_text("Welcome! Choose an option 👇", reply_markup=reply_markup)
 
-@bot.message_handler(commands=['start'])
-def send_welcome(message):
-    bot.reply_to(message, "hello me bot hu tata")
-def run_bot():
-    print("Bot polling started...")
-    bot.polling(none_stop=True)
+# Button callback
+def button(update: Update, context: CallbackContext):
+    query = update.callback_query
+    query.answer()
 
-# Dono ko ek saath chalane ka tareeka
-if __name__ == "__main__":
-    # Flask server ko ek alag thread mein chalao
-    flask_thread = threading.Thread(target=run_flask)
-    flask_thread.start()
+    if query.data == "about":
+        text = "🤖 This is a simple Telegram bot with inline buttons."
+    elif query.data == "profile":
+        user = query.from_user
+        text = f"👤 Profile:\nName: {user.full_name}\nUsername: @{user.username}\nID: {user.id}"
+    elif query.data == "time":
+        text = f"⏰ Current Time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    elif query.data == "joke":
+        text = random.choice(jokes)
+    elif query.data == "quote":
+        text = random.choice(quotes)
+    elif query.data == "restart":
+        start(query, context)
+        return
+    elif query.data == "exit":
+        text = "❌ Bot stopped. Type /start to begin again."
+    else:
+        text = "⚠️ Unknown option!"
 
-    # Bot ko main thread mein chalao
-    run_bot()
-    
+    query.edit_message_text(text=text)
+
+def main():
+    updater = Updater(TOKEN, use_context=True)
+    dp = updater.dispatcher
+
+    dp.add_handler(CommandHandler("
