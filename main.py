@@ -1,74 +1,65 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
-import datetime
-import random
+import os
+from aiohttp import web
+from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
+from aiogram.types import Message
+from aiogram.filters import Command
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 
-# Tumhara token yaha laga diya hai
-TOKEN = "7773696448:AAHVQcZR36-YZp3n0-fOowSda45-MnJQSVs"
+# --- CONFIG (Isko waise hi rehne dein) ---
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+BASE_WEBHOOK_URL = os.getenv("BASE_WEBHOOK_URL")
 
-# Random jokes & quotes
-jokes = [
-    "😂 Why did the computer go to the doctor? Because it caught a virus!",
-    "🤣 I asked my laptop for a joke… it said '404 Joke Not Found!'",
-    "😜 Why was the math book sad? Because it had too many problems."
-]
+# Yeh check karega ki environment variables set hain ya nahi
+if not BOT_TOKEN:
+    raise RuntimeError("BOT_TOKEN environment variable not set!")
+if not BASE_WEBHOOK_URL:
+    raise RuntimeError("BASE_WEBHOOK_URL environment variable not set!")
 
-quotes = [
-    "🌟 Believe in yourself!",
-    "🚀 Dreams don’t work unless you do.",
-    "🔥 Stay positive, work hard, make it happen."
-]
+# Webhook settings
+WEBHOOK_PATH = f"/webhook/{BOT_TOKEN}"
+WEBHOOK_URL = f"{BASE_WEBHOOK_URL}{WEBHOOK_PATH}"
 
-# Start command
-def start(update: Update, context: CallbackContext):
-    keyboard = [
-        [InlineKeyboardButton("📌 About Bot", callback_data='about')],
-        [InlineKeyboardButton("👤 My Profile", callback_data='profile')],
-        [InlineKeyboardButton("⏰ Time & Date", callback_data='time')],
-        [InlineKeyboardButton("😂 Random Joke", callback_data='joke')],
-        [InlineKeyboardButton("💡 Quote", callback_data='quote')],
-        [InlineKeyboardButton("🔄 Restart", callback_data='restart')],
-        [InlineKeyboardButton("❌ Exit", callback_data='exit')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    update.message.reply_text("Welcome! Choose an option 👇", reply_markup=reply_markup)
+# Server settings
+WEB_SERVER_HOST = "0.0.0.0"
+WEB_SERVER_PORT = int(os.getenv("PORT", 8080))
 
-# Button callback
-def button(update: Update, context: CallbackContext):
-    query = update.callback_query
-    query.answer()
+# Bot aur Dispatcher setup
+bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
+dp = Dispatcher()
 
-    if query.data == "about":
-        text = "🤖 This is a simple Telegram bot with inline buttons."
-    elif query.data == "profile":
-        user = query.from_user
-        text = f"👤 Profile:\nName: {user.full_name}\nUsername: @{user.username}\nID: {user.id}"
-    elif query.data == "time":
-        text = f"⏰ Current Time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-    elif query.data == "joke":
-        text = random.choice(jokes)
-    elif query.data == "quote":
-        text = random.choice(quotes)
-    elif query.data == "restart":
-        start(query, context)
-        return
-    elif query.data == "exit":
-        text = "❌ Bot stopped. Type /start to begin again."
-    else:
-        text = "⚠️ Unknown option!"
 
-    query.edit_message_text(text=text)
+# --- BOT HANDLER (Sirf ek command) ---
+@dp.message(Command("start"))
+async def cmd_start(message: Message):
+    """/start command par yeh function chalega"""
+    await message.answer("Hello! Bot bilkul theek se kaam kar raha hai.")
 
+
+# --- APP LIFECYCLE (Webhook set karne ke liye) ---
+async def on_startup(bot: Bot) -> None:
+    """Server start hone par webhook set karega"""
+    await bot.set_webhook(url=WEBHOOK_URL)
+    print(f"Webhook set to: {WEBHOOK_URL}")
+
+async def on_shutdown(bot: Bot) -> None:
+    """Server band hone par webhook delete karega"""
+    await bot.delete_webhook()
+    print("Webhook deleted.")
+
+
+# --- MAIN FUNCTION (Bot ko start karne ke liye) ---
 def main():
-    updater = Updater(TOKEN, use_context=True)
-    dp = updater.dispatcher
+    dp.startup.register(on_startup)
+    dp.shutdown.register(on_shutdown)
 
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CallbackQueryHandler(button))
+    app = web.Application()
+    webhook_requests_handler = SimpleRequestHandler(dispatcher=dp, bot=bot)
+    webhook_requests_handler.register(app, path=WEBHOOK_PATH)
+    
+    setup_application(app, dp, bot=bot)
+    web.run_app(app, host=WEB_SERVER_HOST, port=WEB_SERVER_PORT)
 
-    updater.start_polling()
-    print("Bot is running ✅")
-    updater.idle()
 
 if __name__ == "__main__":
     main()
