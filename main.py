@@ -20,8 +20,7 @@ def run_flask():
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    bot.reply_to(message, "Hello mai achal ka bnay huaa bot hu jo 24/7 chlta hai ap mere sath bate kr skte hai bte krne ke liye /start likh kar beje ya is par click kre i love you user.")
-
+    bot.reply_to(message, "hello me bot hu tata")
 def run_bot():
     print("Bot polling started...")
     bot.polling(none_stop=True)
