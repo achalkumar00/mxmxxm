@@ -3,7 +3,8 @@ from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, Callback
 import datetime
 import random
 
-TOKEN = "PASTE_YOUR_BOT_TOKEN_HERE"
+# Tumhara token yaha laga diya hai
+TOKEN = "7773696448:AAHVQcZR36-YZp3n0-fOowSda45-MnJQSVs"
 
 # Random jokes & quotes
 jokes = [
