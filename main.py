@@ -62,4 +62,12 @@ def main():
     updater = Updater(TOKEN, use_context=True)
     dp = updater.dispatcher
 
-    dp.add_handler(CommandHandler("
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(CallbackQueryHandler(button))
+
+    updater.start_polling()
+    print("Bot is running ✅")
+    updater.idle()
+
+if __name__ == "__main__":
+    main()
